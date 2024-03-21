@@ -1,6 +1,5 @@
 import discord
 import collections
-from config import token, join_link
 from typing import Callable
 
 class DiscordBot:
@@ -124,32 +123,51 @@ class DiscordBot:
                 print('I was mentioned!')
                 await self.reply('I was mentioned!', True)
             return on_atMention_example
-
-            
-
-
-
-    
+  
 
 def example_bot():
-    test: DiscordBot = DiscordBot(join_link, token)
+    # get join link and token for bot
+    from config import join_link, token
+
+    # define on message function
     async def on_message(self: DiscordBot, message: discord.Message):
         print(f'Got message: "{message.content}" from user "{message.author}"')
-        if self.self_mention() in message.content:
-            msg = f'{self.author_mention(message)} @-ed me!'
-            print(f'{msg=}')
-            await self.reply(msg)
-        else:
-            print(f"Wasn't mentioned, ignoring message: '{message.content}' sent by '{message.author}'")
+
+    # define on mention functon
+    async def on_mention(self: DiscordBot, message: discord.Message):
+        print('I was mentioned!')
+        msg = f'{self.author_mention(message)} @-ed me!'
+        print(f'{msg=}')
+        await self.reply(msg)
+        
+    # define a command
+    async def tell_a_joke(self: DiscordBot, message: discord.Message):
+        pre_joke: str = f"This one's for {self.author_mention(message)}:\n"
+        joke: str = 'Why did the chicken cross the road? To get to the other side!'
+        await self.reply(pre_joke + joke)
+        print(f'Told a joke to {message.author}')
+
+    # create the bot
+    test: DiscordBot = DiscordBot(join_link, token)
+
+    # set the functions
     test.set_on_message_function(on_message)
+    test.set_on_atMention_function(on_mention)
+    test.on_command('/joke', tell_a_joke)
+
+    # run the bot
     test.run()
 
 
 def main():
-    print('running an example bot...')
+    print("""Test Bot is a test discord bot that will:
+    1. Log each discord message
+    2. Reply to messages where it is @mention-ed
+    3. Tell a joke when the `/joke` command is used
+    
+Running Test Bot...""")
     example_bot()
         
 if __name__ == '__main__':
         main()
     
-            
