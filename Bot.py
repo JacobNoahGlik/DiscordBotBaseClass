@@ -1,12 +1,14 @@
 import discord
 import collections
 from config import token, join_link
+from typing import Callable
 
 class DiscordBot:
     def __init__(self, invite_link: str, token: str, max_memory: int = 10):
         self._caught_msgs: collections.deque = collections.deque(maxlen=max_memory)
         self._sent_msgs: collections.deque = collections.deque(maxlen=max_memory)
         self._all_msgs: collections.deque = collections.deque(maxlen=max_memory)
+        self._commands = dict()
         self._asign_to_self_helper(invite_link, token)
         self._set_client()
         self._set_events()
@@ -37,6 +39,7 @@ class DiscordBot:
             await self._on_ated(message)
             if self._on_message:
                 await self._on_message(self, message)
+            await self._run_commands(message)
     def get_messages(self) -> collections.deque:
         return self._caught_msgs
     def get_sent_messages(self) -> collections.deque:
@@ -79,12 +82,24 @@ class DiscordBot:
                 return None
         except Exception as e:
             return e
-    def get_self_mention(self) -> str:
+    def self_mention(self) -> str:
         return f'<@{self.get_id()}>'
-    def get_author_mention(self, message: discord.Message | None = None) -> str:
+    def author_mention(self, message: discord.Message | None = None) -> str:
         if message:
             return f'<@{message.author.id}>'
-        return f'<@{self._caught_msgs[-1].author.id}>'
+        if len(self._caught_msgs) > 0:
+            return f'<@{self._caught_msgs[-1].author.id}>'
+        return ''
+    async def _run_commands(self, message: discord.Message):
+        for key, value in self._commands.items():
+            if message.content.startswith(key):
+                await value(self, message)
+    def on_command(self, command: str, function) -> None:
+        self._commands[command] = function
+    def set_commands(self, commands: dict[str, Callable]) -> None:
+        self._commands = commands
+    def add_commands(self, commands: dict[str, Callable]) -> None:
+        self._commands.update(commands)
     def run(self) -> None:
         try:
             self._client.run(self._token)
@@ -95,16 +110,16 @@ class DiscordBot:
             print('Session ended unexpectedly with error code:')
             print(e.__repr__())
     @staticmethod
-    def generate_default_ready_function():
+    def generate_default_ready_function() -> Callable:
         async def default_ready_function(self: DiscordBot) -> None:
             print(f'We have logged in as {self._client.user}')
         return default_ready_function
     @staticmethod
-    def generate_default_on_message_function():
+    def generate_default_on_message_function() -> Callable:
         async def default_on_message_function(self: DiscordBot, message: discord.Message) -> None:
             print(f'Got message: "{message.content}" from user "{message.author}"')
         return default_on_message_function
-    def generate_default_on_atMention_example():
+    def generate_default_on_atMention_example() -> Callable:
             async def on_atMention_example(self: DiscordBot, message: discord.Message) -> None:
                 print('I was mentioned!')
                 await self.reply('I was mentioned!', True)
@@ -120,13 +135,21 @@ def example_bot():
     test: DiscordBot = DiscordBot(join_link, token)
     async def on_message(self: DiscordBot, message: discord.Message):
         print(f'Got message: "{message.content}" from user "{message.author}"')
-        if self.get_self_mention() in message.content:
-            msg = f'{self.get_author_mention(message)} @-ed me!'
+        if self.self_mention() in message.content:
+            msg = f'{self.author_mention(message)} @-ed me!'
             print(f'{msg=}')
             await self.reply(msg)
         else:
             print(f"Wasn't mentioned, ignoring message: '{message.content}' sent by '{message.author}'")
     test.set_on_message_function(on_message)
     test.run()
+
+
+def main():
+    print('running an example bot...')
+    example_bot()
+        
+if __name__ == '__main__':
+        main()
     
             
