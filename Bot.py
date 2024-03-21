@@ -65,6 +65,18 @@ class DiscordBot:
         return self._client.user.id if self._client.user else None
     def get_global_name(self) -> str | None:
         return self._client.user.global_name if self._client.user else None
+    def get_other_users_messages(self) -> list[discord.Message]:
+        msgs : list = list(self._caught_msgs)
+        msgs.reverse()
+        return msgs
+    def get_my_messages(self) -> list[discord.Message]:
+        msgs : list = list(self._sent_msgs)
+        msgs.reverse()
+        return msgs
+    def get_last_messages(self) -> list[discord.Message]:
+        msgs : list = list(self._all_msgs)
+        msgs.reverse()
+        return msgs
     def set_ready_function(self, function) -> None:
         self._ready_function = function
     async def _on_ated(self, message: discord.Message) -> None:
@@ -79,6 +91,15 @@ class DiscordBot:
             if self._caught_msgs[-1]:
                 await self._caught_msgs[-1].reply(content, mention_author=mention)
                 return None
+        except Exception as e:
+            return e
+    async def send(self, content, message: discord.Message | None = None) -> Exception | None:
+        try:
+            if not message and len(self._caught_msgs) > 0:
+                message = self._caught_msgs[-1]
+            elif message:
+                await message.channel.send(content)
+            return None
         except Exception as e:
             return e
     def self_mention(self) -> str:
