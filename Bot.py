@@ -81,12 +81,19 @@ class DiscordBot:
             return e
     def get_self_mention(self) -> str:
         return f'<@{self.get_id()}>'
+    def get_author_mention(self, message: discord.Message | None = None) -> str:
+        if message:
+            return f'<@{message.author.id}>'
+        return f'<@{self._caught_msgs[-1].author.id}>'
     def run(self) -> None:
         try:
             self._client.run(self._token)
         except discord.errors.LoginFailure as e:
             print('Function: DiscordBot.run()')
             print(f'\tCAUGHT A TOKEN ERROR: Token "{self._token}" has expired or isn\'t valid.\n\t\tOriginal err: {e.__repr__()}\n\t\tError Type:   "discord.errors.LoginFailure"')
+        except discord.errors.ConnectionClosed as e:
+            print('Session ended unexpectedly with error code:')
+            print(e.__repr__())
     @staticmethod
     def generate_default_ready_function():
         async def default_ready_function(self: DiscordBot) -> None:
@@ -114,7 +121,7 @@ def example_bot():
     async def on_message(self: DiscordBot, message: discord.Message):
         print(f'Got message: "{message.content}" from user "{message.author}"')
         if self.get_self_mention() in message.content:
-            msg = 'You @-ed me!'
+            msg = f'{self.get_author_mention(message)} @-ed me!'
             print(f'{msg=}')
             await self.reply(msg)
         else:
