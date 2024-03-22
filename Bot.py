@@ -4,10 +4,8 @@ from typing import Callable
 
 class DiscordBot:
     def __init__(self, invite_link: str, token: str, max_memory: int = 10):
-        self._caught_msgs: collections.deque = collections.deque(maxlen=max_memory)
-        self._sent_msgs: collections.deque = collections.deque(maxlen=max_memory)
-        self._all_msgs: collections.deque = collections.deque(maxlen=max_memory)
-        self._commands = dict()
+        self._previous_messages: Counter = Counter(max_memory)
+        self._commands = {}
         self._asign_to_self_helper(invite_link, token)
         self._set_client()
         self._set_events()
@@ -30,19 +28,27 @@ class DiscordBot:
                 await self._ready_function(self)
         @self._client.event
         async def on_message(message):
-            self._all_msgs.append(message)
+            # self._all_msgs.append(message)
             if message.author == self._client.user:
-                self._sent_msgs.append(message)
+                self._previous_messages.add_my_message(message)
                 return
-            self._caught_msgs.append(message)
+            self._previous_messages.add_other_message(message)
             await self._on_ated(message)
             if self._on_message:
                 await self._on_message(self, message)
             await self._run_commands(message)
-    def get_messages(self) -> collections.deque:
-        return self._caught_msgs
-    def get_sent_messages(self) -> collections.deque:
-        return self._sent_msgs
+    def get_other_users_messages(self) -> list[discord.Message]:
+        dq_lst = list(self._previous_messages.get_other())
+        dq_lst.reverse()
+        return dq_lst
+    def get_sent_messages(self) -> list[discord.Message]:
+        dq_lst = list(self._previous_messages.get_my())
+        dq_lst.reverse()
+        return dq_lst
+    def get_all_previous_messages(self) -> list[discord.Message]:
+        dq_lst = list(self._previous_messages.get_total())
+        dq_lst.reverse()
+        return dq_lst
     def get_invite(self) -> str:
         return self._invite_link
     def get_token(self) -> str:
@@ -52,31 +58,29 @@ class DiscordBot:
     def get_client(self) -> discord.Client:
         return self._client
     def get_last_message(self) -> discord.Message | None:
-        if len(self._caught_msgs) == 0:
+        if len(self._previous_messages.get_other()) == 0:
             return None
-        return self._caught_msgs[-1]
+        return self._previous_messages.get_other()[-1]
     def get_last_total_message(self) -> discord.Message | None:
-        if len(self._all_msgs) == 0:
+        if len(self._previous_messages.get_total()) == 0:
             return None
-        return self._all_msgs[-1]
-    def set_on_message_function(self, function) -> None:
+        return self._previous_messages.get_total()[-1]
+    def get_last_sent_message(self) -> discord.Message | None:
+        if len(self._previous_messages.get_my()) == 0:
+            return None
+        return self._previous_messages.get_my()[-1]
+    def set_on_message_function(self, function: Callable) -> None:
         self._on_message = function
     def get_id(self) -> int | None:
         return self._client.user.id if self._client.user else None
     def get_global_name(self) -> str | None:
         return self._client.user.global_name if self._client.user else None
-    def get_other_users_messages(self) -> list[discord.Message]:
-        msgs : list = list(self._caught_msgs)
-        msgs.reverse()
-        return msgs
-    def get_my_messages(self) -> list[discord.Message]:
-        msgs : list = list(self._sent_msgs)
-        msgs.reverse()
-        return msgs
-    def get_last_messages(self) -> list[discord.Message]:
-        msgs : list = list(self._all_msgs)
-        msgs.reverse()
-        return msgs
+    def get_number_recieved_messages(self) -> int:
+        return self._previous_messages.get_other_msg_count()
+    def get_number_sent_messages(self) -> int:
+        return self._previous_messages.get_my_msg_count()
+    def get_number_lifetime_messages(self) -> int:
+        return self._previous_messages.get_total_msg_count()
     def set_ready_function(self, function) -> None:
         self._ready_function = function
     async def _on_ated(self, message: discord.Message) -> None:
@@ -86,29 +90,29 @@ class DiscordBot:
         self._on_atMention = function
     def ignore_atMention(self) -> None:
         self._ignore_on_atMention = True
-    async def reply(self, content, mention:bool = True) -> Exception | None:
+    async def reply(self, content, mention:bool = True, message: discord.Message|None = None) -> Exception | None:
+        if not message and (last := self.get_last_message()):
+            message = last
         try:
-            if self._caught_msgs[-1]:
-                await self._caught_msgs[-1].reply(content, mention_author=mention)
-                return None
+            await message.reply(content, mention_author=mention)
+            return None
         except Exception as e:
             return e
     async def send(self, content, message: discord.Message | None = None) -> Exception | None:
+        if not message and (last := self.get_last_message()):
+            message = last
         try:
-            if not message and len(self._caught_msgs) > 0:
-                message = self._caught_msgs[-1]
-            elif message:
-                await message.channel.send(content)
+            await message.channel.send(content)
             return None
         except Exception as e:
             return e
     def self_mention(self) -> str:
         return f'<@{self.get_id()}>'
     def author_mention(self, message: discord.Message | None = None) -> str:
+        if not message and (last := self.get_last_message()):
+            message = last
         if message:
             return f'<@{message.author.id}>'
-        if len(self._caught_msgs) > 0:
-            return f'<@{self._caught_msgs[-1].author.id}>'
         return ''
     async def _run_commands(self, message: discord.Message):
         for key, value in self._commands.items():
@@ -144,7 +148,42 @@ class DiscordBot:
                 print('I was mentioned!')
                 await self.reply('I was mentioned!', True)
             return on_atMention_example
-  
+
+
+class Counter:
+    def __init__(self, max_memory):
+        self._msgs: list[collections.deque] = [
+            collections.deque(maxlen=max_memory), 
+            collections.deque(maxlen=max_memory), 
+            collections.deque(maxlen=max_memory)
+        ]
+        self._num_msgs: list[int] = [0, 0, 0]
+    def add_my_message(self, increase):
+        self._msgs[0].append(increase)
+        self._msgs[2].append(increase)
+        self._num_msgs[0] += 1
+        self._num_msgs[2] += 1
+    def add_other_message(self, increase):
+        self._msgs[1].append(increase)
+        self._msgs[2].append(increase)
+        self._num_msgs[1] += 1
+        self._num_msgs[2] += 1
+    def get_my(self):
+        return self._msgs[0]
+    def get_other(self):
+        return self._msgs[1]
+    def get_total(self):
+        return self._msgs[2]
+    def get_my_msg_count(self):
+        return self._num_msgs[0]
+    def get_other_msg_count(self):
+        return self._num_msgs[1]
+    def get_total_msg_count(self):
+        return self._num_msgs[2]
+    
+        
+            
+    
 
 def example_bot():
     # get join link and token for bot
