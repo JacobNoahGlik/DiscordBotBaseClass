@@ -21,6 +21,8 @@ Initialization + static methods
   * `token` (type `str`) is the token needed to run your bot
   * `Max_memory` *OPTIONAL*  (type `int`) is the maximum previous messages the bot will remember
     * If a new message comes in and there are already 10 saved, it will replace the oldest one
+  * `custom_intents` *OPTIONAL*  (type `discord.Intents`) is an optional custom intent that will be applied to the DiscordBot client (type `discord.Client`) and will override the default intents which are only those needed to access the messages. 
+    * The default `discord.Intent` is defined as `discord.Intents.default().message_content = True`.
 * `@staticmethod`  `def generate_default_ready_function() -> Callable:`
   * Generate the default `on_ready` function for the bot.
     * An `on_ready` function will run every time the bot comes online.
