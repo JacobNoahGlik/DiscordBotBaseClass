@@ -7,6 +7,12 @@ Turining the python code for discord bots into class structures instead of scrip
 
 <br>
 
+## `class::DiscordBot` Abilities
+* Ability to know if it was mentioned
+* Ability to recognize custom commands and execute saved functions based on those commands
+
+<br>
+
 ## `class::DiscordBot` Functions:
 Initialization + static methods
 * `__init__(self, invite_link: str, token: str, max_memory: int = 10):`
