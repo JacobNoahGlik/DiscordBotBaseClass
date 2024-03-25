@@ -3,11 +3,14 @@ import collections
 from typing import Callable
 
 class DiscordBot:
-    def __init__(self, invite_link: str, token: str, max_memory: int = 10):
+    def __init__(
+        self, invite_link: str, token: str, 
+        max_memory: int = 10, custom_intents: discord.Intents | None = None
+    ):
         self._previous_messages: Counter = Counter(max_memory)
         self._commands = {}
         self._asign_to_self_helper(invite_link, token)
-        self._set_client()
+        self._set_client(custom_intents)
         self._set_events()
         self._ready_function = DiscordBot.generate_default_ready_function()
         self._on_message = DiscordBot.generate_default_on_message_function()
@@ -16,8 +19,10 @@ class DiscordBot:
         self._token: str = token
         self._ignore_on_atMention: bool = False
         self._on_atMention = DiscordBot.generate_default_on_atMention_example()
-    def _set_client(self, access_message_content:bool = True) -> None:
-        self._intents: discord.Intents = discord.Intents.default()
+    def _set_client(self, custom_intents: discord.Intents | None, access_message_content:bool = True) -> None:
+        if not custom_intents:
+            custom_intents = discord.Intents.default()
+        self._intents: discord.Intents = custom_intents
         if access_message_content: 
             self._intents.message_content = True
         self._client: discord.Client = discord.Client(intents=self._intents)
