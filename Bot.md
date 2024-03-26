@@ -46,6 +46,14 @@ Initialization + static methods
     * Which takes two inputs "self" of type `class::DiscordBot` and "message" of type `class::discord.Message`
     * And returns `None` when called
 * `@staticmethod` &nbsp; `def generate_default_on_atMention_example() -> Callable:`
+  * Generate the default `on_atMention` function for the bot.
+    * An `on_atMention` function will run every time a message sent by a user contains the `@bot_name` string which mentions the bot.
+    * An `on_atMention` function will run with `self` (the `DiscordBot` object) and `message` (the `discord.Message`) that triggared this function call.
+    * Any `return`/output from an `on_atMention` function is ignored.
+  * No input expected for this generator-function.
+  * Returns a function (`typing.Callable`) object
+    * Which takes two inputs "self" of type `class::DiscordBot` and "message" of type `class::discord.Message`
+    * And returns `None` when called
 
 # Counter Class
 Making counting and saving `discord.Messages` esier and more readable
