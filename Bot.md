@@ -2,6 +2,10 @@
 
 <br>
 
+[Link to discord's developer portal](https://discord.com/developers/application)
+
+<br>
+
 # DiscordBot Class
 Turining the python code for discord bots into class structures instead of script style code
 
